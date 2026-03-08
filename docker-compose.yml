@@ -69,6 +69,7 @@ services:
     build: ./services/link
     environment:
       POSTGRES_DSN: ${POSTGRES_DSN}
+      JWT_SECRET: ${JWT_SECRET}
       REDIS_ADDR: ${REDIS_ADDR}
       ANALYTICS_SERVICE_URL: ${ANALYTICS_SERVICE_URL}
     expose:
