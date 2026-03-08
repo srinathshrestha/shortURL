@@ -1,0 +1,10 @@
+# Local dev override — HTTP only, no SSL
+# Docker Compose automatically merges this with docker-compose.yml
+
+services:
+  nginx:
+    volumes:
+      # Use dev config (HTTP only) instead of production SSL config
+      - ./nginx/nginx-dev.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      # Omit SSL cert mount — not needed for local dev

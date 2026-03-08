@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LinkVerse Dashboard</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="dashboard">
+    <header class="dashboard-header">
+      <span class="brand">linkverse</span>
+      <span class="email" id="header-email"></span>
+      <a href="#" id="logout-btn" class="logout">Sign out</a>
+    </header>
+
+    <main class="dashboard-main">
+      <aside class="links-panel">
+        <form class="short-form" id="short-form">
+          <input type="url" id="new-link-url" placeholder="https://example.com" required>
+          <input type="text" id="new-link-title" placeholder="Title (optional)">
+          <button type="submit" class="btn">Shorten</button>
+        </form>
+        <div class="links-panel-inner">
+          <div id="links-list"></div>
+        </div>
+      </aside>
+
+      <section class="analytics-panel">
+        <div id="analytics-empty" class="analytics-empty">Select a link</div>
+        <div id="analytics-loaded" style="display: none;">
+          <div id="analytics-error" class="form-error" style="display: none; margin-bottom: 16px;"></div>
+          <div class="slug" id="analytics-slug"></div>
+          <div class="day-toggles" id="day-toggles"></div>
+          <div class="summary-row" id="summary-row"></div>
+          <div class="chart-block">
+            <div class="chart-label">Clicks by day</div>
+            <canvas id="chart-by-day" width="400" height="150"></canvas>
+          </div>
+          <div class="chart-block">
+            <div class="chart-label">By country</div>
+            <canvas id="chart-by-country" width="400" height="180"></canvas>
+          </div>
+          <div class="chart-block">
+            <div class="chart-label">By device</div>
+            <canvas id="chart-by-device" width="400" height="180"></canvas>
+          </div>
+          <div class="chart-block">
+            <div class="chart-label">By referrer</div>
+            <canvas id="chart-by-referrer" width="400" height="180"></canvas>
+          </div>
+          <a href="#" id="export-link" class="export-link">Export CSV</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script>
+    initDashboard();
+  </script>
+</body>
+</html>

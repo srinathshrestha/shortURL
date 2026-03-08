@@ -1,0 +1,141 @@
+# LinkVerse Analytics Platform — Docker Compose
+# All 8 services on linkverse_net. Only nginx exposes ports.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database:/migrations:ro
+    expose:
+      - "5432"
+    networks:
+      - linkverse_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    networks:
+      - linkverse_net
+    restart: unless-stopped
+
+  gateway:
+    build: ./services/gateway
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      LINK_SERVICE_URL: ${LINK_SERVICE_URL}
+      REPORT_SERVICE_URL: ${REPORT_SERVICE_URL}
+      REDIS_ADDR: ${REDIS_ADDR}
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - linkverse_net
+    restart: unless-stopped
+
+  auth-service:
+    build: ./services/auth
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      POSTGRES_DSN: ${POSTGRES_DSN}
+    expose:
+      - "8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - linkverse_net
+    restart: unless-stopped
+
+  link-service:
+    build: ./services/link
+    environment:
+      POSTGRES_DSN: ${POSTGRES_DSN}
+      REDIS_ADDR: ${REDIS_ADDR}
+      ANALYTICS_SERVICE_URL: ${ANALYTICS_SERVICE_URL}
+    expose:
+      - "8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - linkverse_net
+    restart: unless-stopped
+
+  analytics-service:
+    build: ./services/analytics
+    environment:
+      POSTGRES_DSN: ${POSTGRES_DSN}
+      REDIS_ADDR: ${REDIS_ADDR}
+      GEOIP_DB_PATH: ${GEOIP_DB_PATH}
+    volumes:
+      - ./data/geoip:/data:ro
+    expose:
+      - "8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - linkverse_net
+    restart: unless-stopped
+
+  report-service:
+    build: ./services/report
+    environment:
+      POSTGRES_DSN: ${POSTGRES_DSN}
+      REDIS_ADDR: ${REDIS_ADDR}
+    expose:
+      - "8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - linkverse_net
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - /etc/letsencrypt/live/yourdomain.com:/etc/ssl/certs:ro
+    depends_on:
+      - gateway
+    networks:
+      - linkverse_net
+    restart: unless-stopped
+
+networks:
+  linkverse_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
