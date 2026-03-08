@@ -6,7 +6,7 @@ DB_NAME ?= linkverse
 
 # Start all services (build if needed)
 up:
-	docker compose up -d --build
+	docker compose up --build
 
 # Stop all services
 down:

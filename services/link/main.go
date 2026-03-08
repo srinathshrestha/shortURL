@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -48,34 +47,42 @@ type ClickEvent struct {
 // ── JWT ───────────────────────────────────────────────────────────────────────
 
 // extractUserID reads the JWT from Authorization header and returns the user_id claim.
+// func (a *App) extractUserID(r *http.Request) (string, error) {
+// 	authHeader := r.Header.Get("Authorization")
+// 	if authHeader == "" {
+// 		return "", fmt.Errorf("missing authorization header")
+// 	}
+// 	parts := strings.SplitN(authHeader, " ", 2)
+// 	if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
+// 		return "", fmt.Errorf("invalid authorization format")
+// 	}
+// 	tokenStr := parts[1]
+// 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+// 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+// 			return nil, fmt.Errorf("unexpected signing method")
+// 		}
+// 		return []byte(a.jwtSecret), nil
+// 	})
+// 	if err != nil || !token.Valid {
+// 		return "", fmt.Errorf("invalid token: %w", err)
+// 	}
+// 	claims, ok := token.Claims.(jwt.MapClaims)
+// 	if !ok {
+// 		return "", fmt.Errorf("invalid claims")
+// 	}
+// 	userID, ok := claims["user_id"].(string)
+// 	if !ok || userID == "" {
+// 		return "", fmt.Errorf("user_id missing from token")
+// 	}
+// 	return userID, nil
+// }
+// extractUserID reads the user ID injected by the Gateway's JWT middleware.
 func (a *App) extractUserID(r *http.Request) (string, error) {
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return "", fmt.Errorf("missing authorization header")
-	}
-	parts := strings.SplitN(authHeader, " ", 2)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "bearer") {
-		return "", fmt.Errorf("invalid authorization format")
-	}
-	tokenStr := parts[1]
-	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
-		}
-		return []byte(a.jwtSecret), nil
-	})
-	if err != nil || !token.Valid {
-		return "", fmt.Errorf("invalid token: %w", err)
-	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return "", fmt.Errorf("invalid claims")
-	}
-	userID, ok := claims["user_id"].(string)
-	if !ok || userID == "" {
-		return "", fmt.Errorf("user_id missing from token")
-	}
-	return userID, nil
+    userID := r.Header.Get("X-User-ID")
+    if userID == "" {
+        return "", fmt.Errorf("missing X-User-ID header from gateway")
+    }
+    return userID, nil
 }
 
 // ── Slug generation ───────────────────────────────────────────────────────────
@@ -189,7 +196,7 @@ func (a *App) handleDeleteLink(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract id from path: /api/links/{id}
-	id := strings.TrimPrefix(r.URL.Path, "/api/links/")
+	id := strings.TrimPrefix(r.URL.Path, "/links/")
 	if id == "" {
 		http.Error(w, `{"error":"missing id"}`, http.StatusBadRequest)
 		return
@@ -262,7 +269,7 @@ func (a *App) fireClickEvent(slug string, r *http.Request) {
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		a.analyticsURL+"/ingest", bytes.NewReader(body))
+		a.analyticsURL+"/events", bytes.NewReader(body))
 	if err != nil {
 		return
 	}
@@ -299,7 +306,7 @@ func (a *App) routes() http.Handler {
 	mux.HandleFunc("/r/", a.handleRedirect)
 
 	// Link CRUD (authenticated)
-	mux.HandleFunc("/api/links", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/links", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			a.handleListLinks(w, r)
@@ -310,7 +317,7 @@ func (a *App) routes() http.Handler {
 		}
 	})
 
-	mux.HandleFunc("/api/links/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/links/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodDelete:
 			a.handleDeleteLink(w, r)

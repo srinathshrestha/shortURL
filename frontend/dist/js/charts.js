@@ -90,7 +90,26 @@ function renderLineChart(canvasId, data) {
   return { ctx: ctx, w: w, h: h };
 }
 
+function truncateLabel(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  var ellipsis = '\u2026';
+  while (text.length > 1 && ctx.measureText(text + ellipsis).width > maxWidth) {
+    text = text.slice(0, -1);
+  }
+  return text + ellipsis;
+}
+
 function renderBarChart(canvasId, data, labelKey, valueKey) {
+  var el = document.getElementById(canvasId);
+  if (!el) return;
+
+  var rows = Math.min((data || []).length, 10);
+  var barH = 18;
+  var gap = 10;
+  var paddingV = 8;
+  var neededH = rows > 0 ? rows * (barH + gap) - gap + paddingV * 2 : 60;
+  el.style.height = neededH + 'px';
+
   var c = getCanvas(canvasId);
   if (!c) return;
   var ctx = c.ctx, w = c.w, h = c.h;
@@ -104,23 +123,30 @@ function renderBarChart(canvasId, data, labelKey, valueKey) {
   }
 
   var maxVal = Math.max.apply(null, data.map(function(d) { return d[valueKey] || 0; })) || 1;
-  var barH = 18;
-  var gap = 8;
-  var labelW = 80;
-  var barMaxW = w - labelW - 60;
+  // Give labels 38% of width, value column 36px, rest is bar
+  var labelW = Math.floor(w * 0.38);
+  var valueColW = 36;
+  var barMaxW = w - labelW - valueColW - 8;
 
   ctx.font = '12px monospace';
-  for (var i = 0; i < Math.min(data.length, 10); i++) {
+  for (var i = 0; i < rows; i++) {
     var d = data[i];
     var val = d[valueKey] || 0;
-    var label = String(d[labelKey] || '');
-    var y = i * (barH + gap);
+    var rawLabel = String(d[labelKey] || '');
+    var y = paddingV + i * (barH + gap);
+
+    // Truncated label
+    var label = truncateLabel(ctx, rawLabel, labelW - 6);
     ctx.fillStyle = '#707070';
     ctx.textAlign = 'left';
     ctx.fillText(label, 0, y + barH - 4);
-    var bw = (val / maxVal) * barMaxW;
+
+    // Bar
+    var bw = Math.max((val / maxVal) * barMaxW, 2);
     ctx.fillStyle = CHART_COLORS[i % CHART_COLORS.length];
     ctx.fillRect(labelW, y, bw, barH);
+
+    // Value
     ctx.fillStyle = '#e0e0e0';
     ctx.textAlign = 'right';
     ctx.fillText(String(val), w, y + barH - 4);
@@ -128,6 +154,17 @@ function renderBarChart(canvasId, data, labelKey, valueKey) {
 }
 
 function renderDonutChart(canvasId, data, labelKey, valueKey) {
+  var el = document.getElementById(canvasId);
+  if (!el) return;
+
+  var lineH = 18;
+  var r = 45;
+  var ringCY = r + 16;          // centre of donut ring
+  var legendTop = ringCY + r + 16;
+  var legendRows = data ? Math.min(data.length, 8) : 0;
+  var neededH = legendTop + legendRows * lineH + 8;
+  el.style.height = neededH + 'px';
+
   var c = getCanvas(canvasId);
   if (!c) return;
   var ctx = c.ctx, w = c.w, h = c.h;
@@ -142,11 +179,9 @@ function renderDonutChart(canvasId, data, labelKey, valueKey) {
 
   var total = data.reduce(function(sum, d) { return sum + (d[valueKey] || 0); }, 0) || 1;
   var cx = w / 2;
-  var cy = 60;
-  var r = 45;
+  var cy = ringCY;
   var strokeW = 16;
   var start = -Math.PI / 2;
-  var acc = 0;
 
   for (var i = 0; i < data.length; i++) {
     var pct = (data[i][valueKey] || 0) / total;
@@ -160,13 +195,12 @@ function renderDonutChart(canvasId, data, labelKey, valueKey) {
     start = end;
   }
 
-  ctx.fillStyle = '#707070';
+  ctx.fillStyle = '#808080';
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
-  var ly = cy + r + 20;
-  for (var j = 0; j < data.length; j++) {
-    var pct = Math.round((data[j][valueKey] || 0) / total * 100);
-    ctx.fillText(data[j][labelKey] + ' \u00b7 ' + pct + '%', cx, ly + j * 16);
+  for (var j = 0; j < legendRows; j++) {
+    var p = Math.round((data[j][valueKey] || 0) / total * 100);
+    ctx.fillText(data[j][labelKey] + ' \u00b7 ' + p + '%', cx, legendTop + j * lineH);
   }
 }
 

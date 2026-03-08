@@ -1,9 +1,25 @@
-# Placeholder until 06-analytics-report-services.md
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-app = FastAPI()
+import database
+from handlers import router
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-@app.get("/")
-def root():
-    return {"status": "Report service placeholder"}
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await database.init_pool()
+    logger.info("Report service started")
+    yield
+    # Shutdown
+    await database.close_pool()
+    logger.info("Report service stopped")
+
+
+app = FastAPI(title="LinkVerse Report Service", lifespan=lifespan)
+app.include_router(router)
