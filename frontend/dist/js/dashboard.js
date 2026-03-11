@@ -26,19 +26,24 @@ function copyToClipboard(text) {
 }
 
 function renderLinkCard(link, isSelected) {
-  var div = document.createElement('div');
-  div.className = 'link-card' + (isSelected ? ' selected' : '');
+  var div = document.createElement('a'); // use <a> for list-group-item-action
+  div.href = '#';
+  div.className = 'list-group-item list-group-item-action border-0 border-bottom rounded-0 py-3' + (isSelected ? ' active bg-primary-subtle border-primary text-body' : '');
   div.dataset.id = link.id;
   div.dataset.slug = link.slug;
   var title = link.title || link.slug;
   var shortUrl = getShortUrl(link.slug);
+  var isTextMuted = isSelected ? '' : ' text-muted';
+  
   div.innerHTML =
-    '<div class="link-item-title">' + escapeHtml(title) + '</div>' +
-    '<div class="link-item-url" data-copy="' + escapeHtml(shortUrl) + '">' + escapeHtml(shortUrl) + '</div>' +
-    '<div class="link-item-long">' + escapeHtml(truncateUrl(link.long_url, 50)) + '</div>' +
-    '<div class="link-item-meta">' +
-      '<span class="link-item-date">' + escapeHtml(formatDate(link.created_at)) + '</span>' +
-      '<a href="#" class="link-item-delete" data-id="' + escapeHtml(link.id) + '">Delete</a>' +
+    '<div class="d-flex w-100 justify-content-between mb-1">' +
+      '<h6 class="mb-0 text-truncate pe-2">' + escapeHtml(title) + '</h6>' +
+      '<small class="text-nowrap' + isTextMuted + '">' + escapeHtml(formatDate(link.created_at)) + '</small>' +
+    '</div>' +
+    '<div class="mb-1 font-monospace small link-item-url text-primary" data-copy="' + escapeHtml(shortUrl) + '" style="cursor: pointer;">' + escapeHtml(shortUrl) + '</div>' +
+    '<div class="d-flex justify-content-between align-items-center mt-2">' +
+      '<small class="text-truncate ' + isTextMuted + '" style="max-width: 80%;">' + escapeHtml(truncateUrl(link.long_url, 50)) + '</small>' +
+      '<button class="btn btn-sm btn-link text-danger p-0 text-decoration-none link-item-delete" data-id="' + escapeHtml(link.id) + '">Delete</button>' +
     '</div>';
   return div;
 }
@@ -52,8 +57,8 @@ function escapeHtml(s) {
 
 function renderSkeleton() {
   var div = document.createElement('div');
-  div.className = 'link-card skeleton';
-  div.style.height = '80px';
+  div.className = 'list-group-item border-0 border-bottom rounded-0 py-3 skeleton';
+  div.style.height = '104px';
   return div;
 }
 
@@ -81,7 +86,7 @@ function bindLinksPanel() {
   var container = document.getElementById('links-list');
   if (!container) return;
 
-  container.querySelectorAll('.link-card').forEach(function(card) {
+  container.querySelectorAll('.list-group-item').forEach(function(card) {
     card.addEventListener('click', function(e) {
       if (e.target.classList.contains('link-item-delete')) {
         e.preventDefault();
@@ -106,27 +111,44 @@ function bindLinksPanel() {
         return;
       }
       selectedLink = { id: card.dataset.id, slug: card.dataset.slug };
-      document.querySelectorAll('.link-card').forEach(function(c) { c.classList.remove('selected'); });
-      card.classList.add('selected');
+      document.querySelectorAll('#links-list .list-group-item').forEach(function(c) { 
+        c.classList.remove('active', 'bg-primary-subtle', 'border-primary', 'text-body'); 
+      });
+      card.classList.add('active', 'bg-primary-subtle', 'border-primary', 'text-body');
       loadAnalytics(selectedLink.slug);
     });
   });
 }
 
 function showAnalyticsEmpty() {
-  var panel = document.getElementById('analytics-content');
-  if (!panel) return;
-  panel.innerHTML = '<div class="analytics-empty">Select a link</div>';
-  document.getElementById('analytics-loaded').style.display = 'none';
+  var emptyEl = document.getElementById('analytics-empty');
+  var loadedEl = document.getElementById('analytics-loaded');
+  if (emptyEl) {
+    emptyEl.classList.remove('d-none');
+    emptyEl.classList.add('d-flex');
+  }
+  if (loadedEl) {
+    loadedEl.classList.remove('d-block');
+    loadedEl.classList.add('d-none');
+  }
 }
 
 function loadAnalytics(slug) {
   var emptyEl = document.getElementById('analytics-empty');
   var loadedEl = document.getElementById('analytics-loaded');
   var errEl = document.getElementById('analytics-error');
-  if (emptyEl) emptyEl.style.display = 'none';
-  if (loadedEl) loadedEl.style.display = 'block';
-  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+  if (emptyEl) {
+    emptyEl.classList.remove('d-flex');
+    emptyEl.classList.add('d-none');
+  }
+  if (loadedEl) {
+    loadedEl.classList.remove('d-none');
+    loadedEl.classList.add('d-block');
+  }
+  if (errEl) {
+    errEl.classList.add('d-none');
+    errEl.textContent = '';
+  }
 
   var slugEl = document.getElementById('analytics-slug');
   if (slugEl) slugEl.textContent = slug;
@@ -135,16 +157,17 @@ function loadAnalytics(slug) {
   if (daysEl) {
     daysEl.innerHTML = '';
     [7, 30, 90].forEach(function(d) {
-      var s = document.createElement('span');
-      s.textContent = d + 'd';
-      s.className = selectedDays === d ? 'active' : '';
-      s.dataset.days = d;
-      s.addEventListener('click', function() {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-outline-secondary ' + (selectedDays === d ? 'active' : '');
+      btn.textContent = d + 'd';
+      btn.dataset.days = d;
+      btn.addEventListener('click', function() {
         if (parseInt(this.dataset.days) === selectedDays) return;
         selectedDays = parseInt(this.dataset.days);
         loadAnalytics(slug);
       });
-      daysEl.appendChild(s);
+      daysEl.appendChild(btn);
     });
   }
 
@@ -168,9 +191,30 @@ function loadAnalytics(slug) {
     var summaryEl = document.getElementById('summary-row');
     if (summaryEl) {
       summaryEl.innerHTML =
-        '<div class="summary-item"><label>Total Clicks</label><div class="value">' + total.toLocaleString() + '</div></div>' +
-        '<div class="summary-item"><label>Top Country</label><div class="value">' + escapeHtml(topCountry) + '</div></div>' +
-        '<div class="summary-item"><label>Top Device</label><div class="value">' + escapeHtml(topDevice) + '</div></div>';
+        '<div class="col-12 col-md-4">' +
+          '<div class="card bg-body-tertiary border-0 shadow-sm h-100">' +
+            '<div class="card-body">' +
+              '<h6 class="card-subtitle mb-2 text-muted">Total Clicks</h6>' +
+              '<h3 class="card-title mb-0">' + total.toLocaleString() + '</h3>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="col-12 col-md-4">' +
+          '<div class="card bg-body-tertiary border-0 shadow-sm h-100">' +
+            '<div class="card-body">' +
+              '<h6 class="card-subtitle mb-2 text-muted">Top Country</h6>' +
+              '<h3 class="card-title mb-0 text-truncate" title="' + escapeHtml(topCountry) + '">' + escapeHtml(topCountry) + '</h3>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="col-12 col-md-4">' +
+          '<div class="card bg-body-tertiary border-0 shadow-sm h-100">' +
+            '<div class="card-body">' +
+              '<h6 class="card-subtitle mb-2 text-muted">Top Device</h6>' +
+              '<h3 class="card-title mb-0 text-truncate" title="' + escapeHtml(topDevice) + '">' + escapeHtml(topDevice) + '</h3>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
     }
 
     renderLineChart('chart-by-day', byDay.data || []);
@@ -189,7 +233,7 @@ function loadAnalytics(slug) {
     var errEl = document.getElementById('analytics-error');
     if (errEl) {
       errEl.textContent = 'Failed to load analytics';
-      errEl.style.display = 'block';
+      errEl.classList.remove('d-none');
     }
   });
 }

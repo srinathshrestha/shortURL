@@ -5,18 +5,24 @@
 
 var CHART_COLORS = ['#c0c0c0', '#707070', '#505050', '#909090', '#383838'];
 
-function getCanvas(id) {
+function getCanvas(id, forcedHeight) {
   var el = document.getElementById(id);
   if (!el || !el.getContext) return null;
+  // Prevent canvas intrinsic aspect ratio from squishing the width when height is changed
+  el.style.width = '100%';
   var dpr = window.devicePixelRatio || 1;
   var ctx = el.getContext('2d');
-  var w = el.clientWidth;
-  var h = el.clientHeight || 150;
+  
+  var w = el.clientWidth || 400;
+  var h = forcedHeight || el.clientHeight || 150;
+  
   el.width = w * dpr;
   el.height = h * dpr;
   ctx.scale(dpr, dpr);
+  
   el.style.width = w + 'px';
   el.style.height = h + 'px';
+  
   return { canvas: el, ctx: ctx, w: w, h: h };
 }
 
@@ -108,9 +114,8 @@ function renderBarChart(canvasId, data, labelKey, valueKey) {
   var gap = 10;
   var paddingV = 8;
   var neededH = rows > 0 ? rows * (barH + gap) - gap + paddingV * 2 : 60;
-  el.style.height = neededH + 'px';
 
-  var c = getCanvas(canvasId);
+  var c = getCanvas(canvasId, neededH);
   if (!c) return;
   var ctx = c.ctx, w = c.w, h = c.h;
 
@@ -157,15 +162,14 @@ function renderDonutChart(canvasId, data, labelKey, valueKey) {
   var el = document.getElementById(canvasId);
   if (!el) return;
 
-  var lineH = 18;
-  var r = 45;
-  var ringCY = r + 16;          // centre of donut ring
-  var legendTop = ringCY + r + 16;
+  var lineH = 22;
+  var r = 50;
+  var ringCY = r + 15;          // centre of donut ring
+  var legendTop = ringCY + r + 45; // Padded from the chart pie
   var legendRows = data ? Math.min(data.length, 8) : 0;
-  var neededH = legendTop + legendRows * lineH + 8;
-  el.style.height = neededH + 'px';
+  var neededH = legendTop + legendRows * lineH + 16;
 
-  var c = getCanvas(canvasId);
+  var c = getCanvas(canvasId, neededH);
   if (!c) return;
   var ctx = c.ctx, w = c.w, h = c.h;
 
@@ -195,9 +199,10 @@ function renderDonutChart(canvasId, data, labelKey, valueKey) {
     start = end;
   }
 
-  ctx.fillStyle = '#808080';
-  ctx.font = '11px sans-serif';
+  ctx.fillStyle = '#a0a0a0';
+  ctx.font = '13px sans-serif';
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   for (var j = 0; j < legendRows; j++) {
     var p = Math.round((data[j][valueKey] || 0) / total * 100);
     ctx.fillText(data[j][labelKey] + ' \u00b7 ' + p + '%', cx, legendTop + j * lineH);
