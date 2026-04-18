@@ -38,10 +38,11 @@ type Link struct {
 }
 
 type ClickEvent struct {
-	Slug     string `json:"slug"`
-	IP       string `json:"ip"`
-	Referrer string `json:"referrer"`
-	UA       string `json:"user_agent"`
+	Slug      string    `json:"slug"`
+	IP        string    `json:"ip"`
+	Referrer  string    `json:"referrer"`
+	UA        string    `json:"user_agent"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // ── JWT ───────────────────────────────────────────────────────────────────────
@@ -256,10 +257,11 @@ func (a *App) fireClickEvent(slug string, r *http.Request) {
 		return
 	}
 	event := ClickEvent{
-		Slug:     slug,
-		IP:       realIP(r),
-		Referrer: r.Referer(),
-		UA:       r.UserAgent(),
+		Slug:      slug,
+		IP:        realIP(r),
+		Referrer:  r.Referer(),
+		UA:        r.UserAgent(),
+		Timestamp: time.Now().UTC(),
 	}
 	body, err := json.Marshal(event)
 	if err != nil {
