@@ -29,7 +29,3 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Cursor AI
-.cursor/
-cursor-prompts/
-diagrams/
